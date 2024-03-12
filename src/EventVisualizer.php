@@ -192,6 +192,14 @@ class EventVisualizer
             }
         }
 
+        // find static calls to job/event dispatches
+        foreach($codeParser->getNodeList() as $className){
+            foreach ($methods as $method) {
+                $foundStaticCalls = $codeParser->getStaticJobOrEventCalls($className, $method);
+                $jobs = array_merge($jobs, $foundStaticCalls);
+            }
+        }
+
         return collect($events);
     }
 
@@ -227,6 +235,14 @@ class EventVisualizer
 
                 $foundMethodCalls = $codeParser->getMethodCalls($class, $method);
                 $jobs = array_merge($jobs, $foundMethodCalls);
+            }
+        }
+
+        // find static calls to job/event dispatches
+        foreach($codeParser->getNodeList() as $className){
+            foreach ($methods as $method) {
+                $foundStaticCalls = $codeParser->getStaticJobOrEventCalls($className, $method);
+                $jobs = array_merge($jobs, $foundStaticCalls);
             }
         }
 

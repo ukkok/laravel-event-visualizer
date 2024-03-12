@@ -34,13 +34,13 @@ final class StaticCallsParsingTest extends TestCase
             'static dispatch call on Event facade without import' => [
                 <<<'CODE'
                 <?php declare(strict_types=1);
-                
+
                 final class ClassName
                 {
                     public function __construct()
                     {
                     }
-                
+
                     public function classMethod(): void
                     {
                         \Event::dispatch(new \App\Events\SomeEvent());
@@ -60,15 +60,15 @@ final class StaticCallsParsingTest extends TestCase
             'static dispatch call on Event facade with import' => [
                 <<<'CODE'
                 <?php declare(strict_types=1);
-                
+
                 use \Event;
-                
+
                 final class ClassName
                 {
                     public function __construct()
                     {
                     }
-                
+
                     public function classMethod(): void
                     {
                         Event::dispatch(new \App\Events\SomeEvent());
@@ -88,13 +88,13 @@ final class StaticCallsParsingTest extends TestCase
             'static dispatch call on Event facade FQN without import' => [
                 <<<'CODE'
                 <?php declare(strict_types=1);
-                
+
                 final class ClassName
                 {
                     public function __construct()
                     {
                     }
-                
+
                     public function classMethod(): void
                     {
                         \Illuminate\Support\Facades\Event::dispatch(new \App\Events\SomeEvent());
@@ -114,15 +114,15 @@ final class StaticCallsParsingTest extends TestCase
             'static dispatch call on Event facade FQN with import' => [
                 <<<'CODE'
                 <?php declare(strict_types=1);
-                
+
                 use \Illuminate\Support\Facades\Event;
-                
+
                 final class ClassName
                 {
                     public function __construct()
                     {
                     }
-                    
+
                     public function classMethod(): void
                     {
                         Event::dispatch(new \App\Events\SomeEvent());
@@ -142,15 +142,15 @@ final class StaticCallsParsingTest extends TestCase
             'static dispatch call on Event facade FQN with import and alias' => [
                 <<<'CODE'
                 <?php declare(strict_types=1);
-                
+
                 use \Illuminate\Support\Facades\Event as Alias;
-                
+
                 final class ClassName
                 {
                     public function __construct()
                     {
                     }
-                    
+
                     public function classMethod(): void
                     {
                         Alias::dispatch(new \App\Events\SomeEvent());
@@ -170,15 +170,15 @@ final class StaticCallsParsingTest extends TestCase
             'no calls but import as alias' => [
                 <<<'CODE'
                 <?php declare(strict_types=1);
-                
+
                 use \Illuminate\Support\Facades\Event as Alias;
-                
+
                 final class ClassName
                 {
                     public function __construct()
                     {
                     }
-                    
+
                     public function classMethod(): void
                     {
                         // something
@@ -192,15 +192,15 @@ final class StaticCallsParsingTest extends TestCase
             'no calls but normal import' => [
                 <<<'CODE'
                 <?php declare(strict_types=1);
-                
+
                 use \Illuminate\Support\Facades\Event;
-                
+
                 final class ClassName
                 {
                     public function __construct()
                     {
                     }
-                    
+
                     public function classMethod(): void
                     {
                         // something
@@ -214,15 +214,15 @@ final class StaticCallsParsingTest extends TestCase
             'commented static dispatch call on Event facade FQN with import' => [
                 <<<'CODE'
                 <?php declare(strict_types=1);
-                
+
                 use \Illuminate\Support\Facades\Event;
-                
+
                 final class ClassName
                 {
                     public function __construct()
                     {
                     }
-                    
+
                     public function classMethod(): void
                     {
                         // Event::dispatch();
@@ -236,20 +236,20 @@ final class StaticCallsParsingTest extends TestCase
             'multiple static dispatch calls on Event facade FQN with import' => [
                 <<<'CODE'
                 <?php declare(strict_types=1);
-                
+
                 use \Illuminate\Support\Facades\Event;
-                
+
                 final class ClassName
                 {
                     public function __construct()
                     {
                     }
-                    
+
                     public function classMethod(): void
                     {
                         $event1 = new \App\Events\SomeEvent();
                         $event2 = new \App\Events\SomeOtherEvent();
-                    
+
                         Event::dispatch($event1);
                         Event::dispatch($event2);
                     }
@@ -267,6 +267,147 @@ final class StaticCallsParsingTest extends TestCase
                         dispatcherClass: 'Illuminate\Support\Facades\Event',
                         dispatchedClass: 'App\Events\SomeOtherEvent',
                         method: 'dispatch',
+                    ),
+                ],
+            ],
+            'static dispatch calls on class itself' => [
+                <<<'CODE'
+                <?php declare(strict_types=1);
+
+                use \App\Domain\Job\DispatchableJob;
+
+                final class ClassName
+                {
+                    public function __construct()
+                    {
+                    }
+
+                    public function classMethod(): void
+                    {
+                        DispatchableJob::dispatch($param1, $param2);
+                    }
+                }
+                CODE,
+                'DispatchableJob',
+                'dispatch',
+                [
+                    new ResolvedCall(
+                        dispatcherClass: 'DispatchableJob',
+                        dispatchedClass: 'DispatchableJob',
+                        method: 'dispatch',
+                    ),
+                ],
+            ],
+            'static dispatchIf calls on class itself' => [
+                <<<'CODE'
+                <?php declare(strict_types=1);
+
+                use \App\Domain\Job\DispatchableJob;
+
+                final class ClassName
+                {
+                    public function __construct()
+                    {
+                    }
+
+                    public function classMethod(): void
+                    {
+                        DispatchableJob::dispatchIf($param1);
+                    }
+                }
+                CODE,
+                'DispatchableJob',
+                'dispatchIf',
+                [
+                    new ResolvedCall(
+                        dispatcherClass: 'DispatchableJob',
+                        dispatchedClass: 'DispatchableJob',
+                        method: 'dispatchIf',
+                    ),
+                ],
+            ],
+
+            'static dispatchUnless calls on class itself' => [
+                <<<'CODE'
+                <?php declare(strict_types=1);
+
+                use \App\Domain\Job\DispatchableJob;
+
+                final class ClassName
+                {
+                    public function __construct()
+                    {
+                    }
+
+                    public function classMethod(): void
+                    {
+                        DispatchableJob::dispatchUnless($param1);
+                    }
+                }
+                CODE,
+                'DispatchableJob',
+                'dispatchUnless',
+                [
+                    new ResolvedCall(
+                        dispatcherClass: 'DispatchableJob',
+                        dispatchedClass: 'DispatchableJob',
+                        method: 'dispatchUnless',
+                    ),
+                ],
+            ],
+            'static dispatchAfterResponse calls on class itself' => [
+                <<<'CODE'
+                <?php declare(strict_types=1);
+
+                use \App\Domain\Job\DispatchableJob;
+
+                final class ClassName
+                {
+                    public function __construct()
+                    {
+                    }
+
+                    public function classMethod(): void
+                    {
+                        DispatchableJob::dispatchAfterResponse($param1);
+                    }
+                }
+                CODE,
+                'DispatchableJob',
+                'dispatchAfterResponse',
+                [
+                    new ResolvedCall(
+                        dispatcherClass: 'DispatchableJob',
+                        dispatchedClass: 'DispatchableJob',
+                        method: 'dispatchAfterResponse',
+                    ),
+                ],
+            ],
+            'static dispatchSync calls on class itself' => [
+                <<<'CODE'
+                <?php declare(strict_types=1);
+
+                use \App\Domain\Job\DispatchableJob;
+
+                final class ClassName
+                {
+                    public function __construct()
+                    {
+                    }
+
+                    public function classMethod(): void
+                    {
+                        DispatchableJob::dispatchSync($param1);
+                    }
+                }
+                CODE,
+                'DispatchableJob',
+                'dispatchSync',
+                [
+                    new ResolvedCall(
+                        dispatcherClass: 'DispatchableJob',
+                        dispatchedClass: 'DispatchableJob',
+                        method: 'dispatchSync',
                     ),
                 ],
             ],

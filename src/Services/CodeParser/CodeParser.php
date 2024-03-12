@@ -24,6 +24,7 @@ use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
+use Throwable;
 
 class CodeParser
 {
@@ -32,6 +33,17 @@ class CodeParser
     private Parser $parser;
 
     private array $nodes;
+
+    // List of laravel own classes, if class is not found in
+    // this list, it's considered as a regular class
+    private array $laravelClasses = [
+        'Bus',
+        'Illuminate\Support\Facades\Bus',
+        'Illuminate\Contracts\Bus\Dispatcher',
+        'Event',
+        'Illuminate\Support\Facades\Event',
+        'Illuminate\Contracts\Events\Dispatcher',
+    ];
 
     public function __construct(string $code)
     {
@@ -62,14 +74,24 @@ class CodeParser
         });
 
         $items = collect($calls)->map(function (StaticCall $node) use ($subjectClass) {
-            return collect($this->resolveClassesFromArgument($node->args[0]))
-                ->map(function (string $dispatchedClass) use ($subjectClass, $node) {
-                    return new ResolvedCall(
-                        dispatcherClass: $subjectClass,
-                        dispatchedClass: $dispatchedClass,
-                        method: $node->name->toString(),
-                    );
-                });
+
+            // is it Laravel bus or event dispatcher?
+            if(in_array($node->class->toString(), $this->laravelClasses)) {
+                return collect($this->resolveClassesFromArgument($node->args[0]))
+                    ->map(function (string $dispatchedClass) use ($subjectClass, $node) {
+                        return new ResolvedCall(
+                            dispatcherClass: $subjectClass,
+                            dispatchedClass: $dispatchedClass,
+                            method: $node->name->toString(),
+                        );
+                    });
+            }
+
+            return new ResolvedCall(
+                dispatcherClass: $subjectClass,
+                dispatchedClass: $node->class->toString(),
+                method: $node->name->toString(),
+            );
         })->flatten(1)->all();
 
         return $items;
@@ -147,6 +169,54 @@ class CodeParser
         })->flatten(1)->all();
     }
 
+    public function getNodeList(): array
+    {
+        $list = [];
+        $this->nodeFinder->find($this->nodes, function (Node $node) use (&$list) {
+            if(!$node instanceof Use_ || $node->type !== Use_::TYPE_NORMAL){
+                return null;
+            }
+
+            try{
+                // todo: could figure out better approach to this
+                $list[] = last(explode("\\", $node->uses[0]->name->toString()));
+            }finally{
+                return false;
+            }
+        });
+        return $list;
+    }
+
+    public function getStaticJobOrEventCalls(
+        string $subjectClass,
+        string $methodName,
+    ): array {
+
+        $calls = $this->nodeFinder->find($this->nodes, function (Node $node) use ($subjectClass, $methodName) {
+            if (!$node instanceof StaticCall) {
+                return false;
+            }
+
+            // Check if call matches what we're looking for ('like 'dispatch')
+            if ($node->name->toString() !== $methodName) {
+                return false;
+            }
+
+            // Check if variable it's called on is an instance of the subject class
+            return $this->areClassesSame($node->class->toString(), $subjectClass);
+        });
+
+        $items = collect($calls)->map(function (StaticCall $node) use ($subjectClass) {
+            return new ResolvedCall(
+                dispatcherClass: $subjectClass,
+                dispatchedClass: $node->class->toString(),
+                method: $node->name->toString(),
+            );
+        })->flatten(1)->all();
+
+        return $items;
+    }
+
     public function areClassesSame(string $class1, string $class2): bool
     {
         return $this->getFullyQualifiedClassName($class1) === $this->getFullyQualifiedClassName($class2);
@@ -220,7 +290,9 @@ class CodeParser
         }
 
         if ($argument->value instanceof Array_) {
-            return collect($argument->value->items)->map(fn (ArrayItem $item) => $this->getFullyQualifiedClassName($item->value->class->toString()))->all();
+            return collect($argument->value->items)
+                ->map(fn (ArrayItem $item) => $this->getFullyQualifiedClassName($item->value->class->toString()))
+                ->all();
         }
 
         return [];
