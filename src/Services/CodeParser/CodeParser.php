@@ -74,24 +74,22 @@ class CodeParser
         });
 
         $items = collect($calls)->map(function (StaticCall $node) use ($subjectClass) {
-
-            // is it Laravel bus or event dispatcher?
-            if(in_array($node->class->toString(), $this->laravelClasses)) {
-                return collect($this->resolveClassesFromArgument($node->args[0]))
-                    ->map(function (string $dispatchedClass) use ($subjectClass, $node) {
-                        return new ResolvedCall(
-                            dispatcherClass: $subjectClass,
-                            dispatchedClass: $dispatchedClass,
-                            method: $node->name->toString(),
-                        );
-                    });
+            $classFqn = $this->getFullyQualifiedClassName($node->class->toString());
+            if(!in_array($classFqn, $this->laravelClasses)) {
+                return new ResolvedCall(
+                    dispatcherClass: $subjectClass,
+                    dispatchedClass: $node->class->toString(),
+                    method: $node->name->toString(),
+                );
             }
-
-            return new ResolvedCall(
-                dispatcherClass: $subjectClass,
-                dispatchedClass: $node->class->toString(),
-                method: $node->name->toString(),
-            );
+            return collect($this->resolveClassesFromArgument($node->args[0]))
+                ->map(function (string $dispatchedClass) use ($subjectClass, $node) {
+                    return new ResolvedCall(
+                        dispatcherClass: $subjectClass,
+                        dispatchedClass: $dispatchedClass,
+                        method: $node->name->toString(),
+                    );
+                });
         })->flatten(1)->all();
 
         return $items;
