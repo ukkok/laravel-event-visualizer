@@ -168,11 +168,7 @@ class EventVisualizer
 
     private function getDispatchedEvents(CodeParser $codeParser): Collection
     {
-        $classes = [
-            'Event',
-            'Illuminate\Support\Facades\Event',
-            'Illuminate\Contracts\Events\Dispatcher',
-        ];
+        $classes = $codeParser->getNodeList();
         $methods = [
             'dispatch',
         ];
@@ -192,14 +188,6 @@ class EventVisualizer
             }
         }
 
-        // find static calls to job/event dispatches
-        foreach($codeParser->getNodeList() as $className){
-            foreach ($methods as $method) {
-                $foundStaticCalls = $codeParser->getStaticJobOrEventCalls($className, $method);
-                $jobs = array_merge($jobs, $foundStaticCalls);
-            }
-        }
-
         return collect($events);
     }
 
@@ -209,7 +197,8 @@ class EventVisualizer
             'Bus',
             'Illuminate\Support\Facades\Bus',
             'Illuminate\Contracts\Bus\Dispatcher',
-        ];
+        ] + $codeParser->getNodeList();
+
         $methods = [
             'dispatch',
             'dispatchChain',
@@ -237,15 +226,7 @@ class EventVisualizer
                 $jobs = array_merge($jobs, $foundMethodCalls);
             }
         }
-
-        // find static calls to job/event dispatches
-        foreach($codeParser->getNodeList() as $className){
-            foreach ($methods as $method) {
-                $foundStaticCalls = $codeParser->getStaticJobOrEventCalls($className, $method);
-                $jobs = array_merge($jobs, $foundStaticCalls);
-            }
-        }
-
+/
         return collect($jobs);
     }
 

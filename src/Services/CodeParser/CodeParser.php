@@ -185,36 +185,6 @@ class CodeParser
         return $list;
     }
 
-    public function getStaticJobOrEventCalls(
-        string $subjectClass,
-        string $methodName,
-    ): array {
-
-        $calls = $this->nodeFinder->find($this->nodes, function (Node $node) use ($subjectClass, $methodName) {
-            if (!$node instanceof StaticCall) {
-                return false;
-            }
-
-            // Check if call matches what we're looking for ('like 'dispatch')
-            if ($node->name->toString() !== $methodName) {
-                return false;
-            }
-
-            // Check if variable it's called on is an instance of the subject class
-            return $this->areClassesSame($node->class->toString(), $subjectClass);
-        });
-
-        $items = collect($calls)->map(function (StaticCall $node) use ($subjectClass) {
-            return new ResolvedCall(
-                dispatcherClass: $subjectClass,
-                dispatchedClass: $node->class->toString(),
-                method: $node->name->toString(),
-            );
-        })->flatten(1)->all();
-
-        return $items;
-    }
-
     public function areClassesSame(string $class1, string $class2): bool
     {
         return $this->getFullyQualifiedClassName($class1) === $this->getFullyQualifiedClassName($class2);
